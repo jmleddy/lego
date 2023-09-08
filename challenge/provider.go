@@ -26,3 +26,14 @@ type ProviderTimeout interface {
 	Provider
 	Timeout() (timeout, interval time.Duration)
 }
+
+// ProviderSequential allows for implementing a
+// Provider where the DNS records are added then validated
+// sequentially instead of adding records all at once and then
+// validating. If an implementor of a Provider provides a Sequential
+// method, then the return value of the Sequential method will be
+// used to determine how long to wait between validating DNS records.
+type ProviderSequential interface {
+	Provider
+	Sequential() time.Duration
+}

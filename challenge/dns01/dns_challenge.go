@@ -161,14 +161,10 @@ func (c *Challenge) CleanUp(authz acme.Authorization) error {
 }
 
 func (c *Challenge) Sequential() (bool, time.Duration) {
-	if p, ok := c.provider.(sequential); ok {
+	if p, ok := c.provider.(challenge.ProviderSequential); ok {
 		return ok, p.Sequential()
 	}
 	return false, 0
-}
-
-type sequential interface {
-	Sequential() time.Duration
 }
 
 // GetRecord returns a DNS record which will fulfill the `dns-01` challenge.
