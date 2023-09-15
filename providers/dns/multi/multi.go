@@ -67,6 +67,7 @@ func NewDNSProviderConfig(config *Config) (challenge.Provider, error) {
 func NewDNSProviderByNames(names ...string) (challenge.Provider, error) {
 	sequentialType := false
 	subProviders := make([]challenge.Provider, len(names))
+
 	for i, name := range names {
 		subProvider, err := dns.NewDNSChallengeProviderByName(name)
 		if err != nil {
@@ -85,6 +86,24 @@ func NewDNSProviderByNames(names ...string) (challenge.Provider, error) {
 	return &provider, nil
 }
 
+// NewDNSProviderFromOthers returns an DNSProvider or
+// DNSProviderSequential instance that implements challenge.Provider,
+// and passes through all interface calls to the providers passed in.
+// If one of the providers passed in via config implements a
+// Sequential() function, a DNSProviderSequential is
+// returned. Otherwise a DNSProvider is returned.
+func NewDNSProviderFromOthers(providers ...challenge.Provider) challenge.Provider {
+	provider := DNSProvider{subProviders: providers}
+
+	for _, subProvider := range providers {
+		if _, ok := subProvider.(sequential); ok {
+			return &DNSProviderSequential{DNSProvider: provider}
+		}
+	}
+
+	return &provider
+}
+
 // Timeout returns the timeout and interval to use when checking for
 // DNS propagation.  Return the longest timeout and shortest interval
 // of all the subproviders. This is probably the right behavior, since
@@ -95,7 +114,7 @@ func (d *DNSProvider) Timeout() (maxTimeout, minInterval time.Duration) {
 	minInterval = dns01.DefaultPollingInterval
 
 	for _, provider := range d.subProviders {
-		if p, ok := provider.(challenge.ProviderTimeout); ok  {
+		if p, ok := provider.(challenge.ProviderTimeout); ok {
 			timeout, interval := p.Timeout()
 			if timeout > maxTimeout {
 				maxTimeout = timeout
@@ -115,7 +134,7 @@ func (d *DNSProviderSequential) Sequential() time.Duration {
 	maxSequenceInterval := dns01.DefaultPropagationTimeout
 
 	for _, provider := range d.subProviders {
-		if p, ok := provider.(sequential); ok  {
+		if p, ok := provider.(sequential); ok {
 			sequenceInterval := p.Sequential()
 			if sequenceInterval > maxSequenceInterval {
 				maxSequenceInterval = sequenceInterval
@@ -125,7 +144,6 @@ func (d *DNSProviderSequential) Sequential() time.Duration {
 
 	return maxSequenceInterval
 }
-
 
 // Present creates a TXT record to fulfill the dns-01 challenge.
 func (d *DNSProvider) Present(domain, token, keyAuth string) error {
